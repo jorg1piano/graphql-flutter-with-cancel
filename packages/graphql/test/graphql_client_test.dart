@@ -987,13 +987,10 @@ query WalletGetContent($input: WalletGetContentInput!) {
 
         verify(
           link.request(
-            Request(
-              operation: Operation(
-                document: parseString(addStar),
-                //operationName: 'AddStar',
-              ),
-              variables: <String, dynamic>{},
-              context: Context(),
+            argThat(
+              predicate((Request req) =>
+                  req.operation.document == parseString(addStar) &&
+                  req.variables.isEmpty),
             ),
           ),
         );

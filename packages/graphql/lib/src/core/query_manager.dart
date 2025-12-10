@@ -17,6 +17,7 @@ import 'package:graphql/src/core/query_result.dart';
 import 'package:graphql/src/core/policies.dart';
 import 'package:graphql/src/exceptions.dart';
 import 'package:graphql/src/scheduler/scheduler.dart';
+import 'package:graphql/src/links/cancel_token.dart';
 
 import 'package:graphql/src/core/_query_write_handling.dart';
 
@@ -272,6 +273,17 @@ class QueryManager {
     bool rereadFromCache = false;
 
     try {
+      // Add queryId to context for ObservableQuery requests
+      // This allows CancellationLink to track and cancel previous requests
+      // from the same ObservableQuery when variables change
+      if (queryId != _oneOffOpId) {
+        request = Request(
+          operation: request.operation,
+          variables: request.variables,
+          context: request.context.withEntry(QueryIdEntry(queryId)),
+        );
+      }
+
       // execute the request through the provided link(s)
       Stream<Response> responseStream = link.request(request);
 

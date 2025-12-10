@@ -67,3 +67,30 @@ class CancelTokenEntry extends ContextEntry {
   @override
   List<Object?> get fieldsForEquality => [token];
 }
+
+/// A [ContextEntry] that carries a query ID through the Link chain.
+///
+/// This is used by [CancellationLink] to track and cancel previous requests
+/// from the same [ObservableQuery] when variables change.
+///
+/// For example, when using an ObservableQuery with changing variables:
+/// ```dart
+/// observable.variables = {'id': 1};
+/// observable.fetchResults(); // Request 1 starts
+///
+/// observable.variables = {'id': 2};
+/// observable.fetchResults(); // Request 1 is cancelled, Request 2 starts
+/// ```
+///
+/// The queryId allows [CancellationLink] to identify that both requests
+/// came from the same ObservableQuery and cancel the first one.
+class QueryIdEntry extends ContextEntry {
+  /// The query ID for this request.
+  final String queryId;
+
+  /// Creates a new [QueryIdEntry] with the given [queryId].
+  QueryIdEntry(this.queryId);
+
+  @override
+  List<Object?> get fieldsForEquality => [queryId];
+}

@@ -48,6 +48,9 @@ import 'package:graphql/src/links/cancel_token.dart';
 /// - The HTTP link must support cancellation (e.g., via AbortableRequest)
 /// - Cancellation happens automatically based on operation + variables
 class CancellationLink extends Link {
+  // Track by queryId for ObservableQuery requests (cancels when variables change)
+  final Map<String, CancelToken> _activeQueryIds = {};
+  // Track by operation+variables for deduplication (cancels duplicate requests)
   final Map<String, CancelToken> _activeRequests = {};
 
   @override
@@ -56,16 +59,33 @@ class CancellationLink extends Link {
       return;
     }
 
+    // Extract queryId if present (from ObservableQuery requests)
+    String? queryId;
+    try {
+      queryId = request.context.entry<QueryIdEntry>()?.queryId;
+    } catch (_) {}
+
     final queryKey = _createQueryKey(request);
 
-    // Cancel any previous request with the same query key
-    final previousToken = _activeRequests[queryKey];
-    if (previousToken != null && !previousToken.isCancelled) {
-      previousToken.cancel();
+    // Cancel previous request from same ObservableQuery (when variables change)
+    if (queryId != null) {
+      final previousQueryToken = _activeQueryIds[queryId];
+      if (previousQueryToken != null && !previousQueryToken.isCancelled) {
+        previousQueryToken.cancel();
+      }
+    }
+
+    // Cancel any previous request with the same query key (deduplication)
+    final previousKeyToken = _activeRequests[queryKey];
+    if (previousKeyToken != null && !previousKeyToken.isCancelled) {
+      previousKeyToken.cancel();
     }
 
     // Create a new cancel token for this request
     final cancelToken = CancelToken();
+    if (queryId != null) {
+      _activeQueryIds[queryId] = cancelToken;
+    }
     _activeRequests[queryKey] = cancelToken;
 
     // Add the cancel token to the request context so downstream links can use it
@@ -93,6 +113,9 @@ class CancellationLink extends Link {
       }
     } finally {
       // Clean up: remove this token if it's still the active one
+      if (queryId != null && _activeQueryIds[queryId] == cancelToken) {
+        _activeQueryIds.remove(queryId);
+      }
       if (_activeRequests[queryKey] == cancelToken) {
         _activeRequests.remove(queryKey);
       }
@@ -112,6 +135,15 @@ class CancellationLink extends Link {
 
   /// Cancels all active requests.
   void cancelAll() {
+    // Cancel all queryId-based requests
+    for (final token in _activeQueryIds.values) {
+      if (!token.isCancelled) {
+        token.cancel();
+      }
+    }
+    _activeQueryIds.clear();
+
+    // Cancel all operation+variables-based requests
     for (final token in _activeRequests.values) {
       if (!token.isCancelled) {
         token.cancel();
