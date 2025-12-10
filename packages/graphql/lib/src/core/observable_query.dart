@@ -383,7 +383,23 @@ class ObservableQuery<TParsed> {
   }
 
   set variables(Map<String, dynamic> variables) {
-    options = options.copyWithVariables(variables);
+    // Clear latestResult when variables change to prevent stale data
+    // from being shown or carried forward when new variables have no cache hit
+    if (options.variables != variables) {
+      latestResult = null;
+
+      // Update options first to get the new variables
+      final newOptions = options.copyWithVariables(variables);
+
+      // Emit loading state with new variables to signal that data is being refetched
+      if (!controller.isClosed) {
+        controller.add(QueryResult.loading(options: newOptions));
+      }
+
+      options = newOptions;
+    } else {
+      options = options.copyWithVariables(variables);
+    }
   }
 
   set optimisticResult(Object? optimisticResult) {
