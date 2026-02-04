@@ -294,7 +294,14 @@ class QueryManager {
       if (timeout case final Duration timeout) {
         responseStream = responseStream.timeout(timeout);
       }
-      response = await responseStream.first;
+
+      try {
+        response = await responseStream.first;
+      } on StateError {
+        // Stream was dropped/cancelled by a link (e.g., dedupe or cancellation)
+        // This is not an error - just return without updating anything
+        return queryResult ?? QueryResult.loading(options: options);
+      }
 
       queryResult = mapFetchResultToQueryResult(
         response,
