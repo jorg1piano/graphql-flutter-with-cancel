@@ -1,35 +1,28 @@
 import 'dart:async';
 
+import 'package:gql_exec/gql_exec.dart';
+import 'package:gql_link/gql_link.dart' show Link;
+import 'package:graphql/src/cache/cache.dart';
+import 'package:graphql/src/core/_base_options.dart';
+import 'package:graphql/src/core/_query_write_handling.dart';
+import 'package:graphql/src/core/mutation_options.dart';
+import 'package:graphql/src/core/observable_query.dart';
+import 'package:graphql/src/core/policies.dart';
+import 'package:graphql/src/core/query_options.dart';
+import 'package:graphql/src/core/query_result.dart';
+import 'package:graphql/src/exceptions.dart';
+import 'package:graphql/src/links/cancel_token.dart';
+import 'package:graphql/src/scheduler/scheduler.dart';
 import 'package:graphql/src/utilities/helpers.dart';
 import 'package:graphql/src/utilities/response.dart';
 import 'package:meta/meta.dart';
-import 'package:collection/collection.dart';
-
-import 'package:gql_exec/gql_exec.dart';
-import 'package:gql_link/gql_link.dart' show Link;
-
-import 'package:graphql/src/cache/cache.dart';
-import 'package:graphql/src/core/observable_query.dart';
-import 'package:graphql/src/core/_base_options.dart';
-import 'package:graphql/src/core/mutation_options.dart';
-import 'package:graphql/src/core/query_options.dart';
-import 'package:graphql/src/core/query_result.dart';
-import 'package:graphql/src/core/policies.dart';
-import 'package:graphql/src/exceptions.dart';
-import 'package:graphql/src/scheduler/scheduler.dart';
-import 'package:graphql/src/links/cancel_token.dart';
-
-import 'package:graphql/src/core/_query_write_handling.dart';
 
 typedef DeepEqualsFn = bool Function(dynamic a, dynamic b);
 typedef AsyncDeepEqualsFn = Future<bool> Function(dynamic a, dynamic b);
 
 /// The equality function used for comparing cached and new data
 /// in synchronous contexts like operator overrides or custom logic.
-///
-/// You can alternatively provide [optimizedDeepEquals] for a faster
-/// equality check, or provide your own via the [GqlClient] constructor.
-DeepEqualsFn gqlDeepEquals = const DeepCollectionEquality().equals;
+DeepEqualsFn gqlDeepEquals = optimizedDeepEquals;
 
 /// The async equality function used for comparing cached and new data
 /// during asynchronous operations like rebroadcast checks.
